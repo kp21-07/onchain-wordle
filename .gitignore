@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Aptos CLI and Move build artifacts
+.aptos/
+build/
+
+# Frontend build and local tooling artifacts
+frontend/dist/
+frontend/.vite/
+*.local
+
+# Environment variables (keep templates committed)
+.env
+.env.*
+frontend/.env.local
+!.env.example
+
+# Logs and editor/OS files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+.vscode/
+
