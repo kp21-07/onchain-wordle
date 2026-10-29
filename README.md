@@ -1,64 +1,30 @@
 # Aptos On-Chain Wordle
 
-A decentralized implementation of Wordle using an Aptos Move smart contract and a React frontend. The contract records each player session, evaluates guesses, selects randomized answers, and maintains player statistics on-chain.
+A Wordle game built with React and an Aptos Move smart contract. Players submit five-letter guesses, receive on-chain duplicate-aware tile feedback, and have their game statistics recorded on Aptos.
 
 ## Features
 
-- Six attempts to guess a five-letter word
-- On-chain two-pass letter matching with duplicate-letter handling
-- Aptos randomness for answer selection
-- Petra, burner-wallet, and local simulation modes
-- Persistent on-chain player statistics
-- Guess distribution, win percentage, and current/best streaks
-- Correct answer reveal after a failed game
-- Valid-word validation in the frontend
+- Six guesses per game
+- Duplicate-letter-aware tile matching
+- On-chain game state and player statistics
+- Aptos random answer selection
+- Petra, Burner, and browser-only Simulation modes
+- Statistics for played games, wins, streaks, and guess distribution
 
-## Architecture
+## Requirements
 
-### Smart contract
-
-The Move package is located in `contracts/`.
-
-- `sources/wordle.move` contains the game module.
-- `Move.toml` defines the package and Aptos Framework dependency.
-- `tests/wordle_tests.move` contains Move tests.
-
-`WordleConfig` is stored at the package address and contains the administrative address, randomized answer pool, and active state. `PlayerState` is stored under each player's account and contains attempts, the current target, game status, and cumulative statistics.
-
-Guess feedback uses these values:
-
-| Value | Meaning |
-|---:|---|
-| 0 | Letter is absent |
-| 1 | Letter is present in a different position |
-| 2 | Letter is present in the correct position |
-
-### Frontend
-
-The frontend is a React and Vite application located in `frontend/`. It communicates with Aptos through the TypeScript SDK and wallet adapter.
-
-- Petra mode uses the player's connected wallet.
-- Burner mode uses a local development wallet.
-- Simulation mode runs entirely in the browser and requires no transaction.
-
-## Prerequisites
-
-- Aptos CLI
 - Node.js 18 or newer
 - npm
-- Petra or another Aptos wallet for live Petra mode
+- Aptos CLI
+- Petra or another Aptos browser wallet for live play
 
-Verify the required tools:
+A complete first-time installation guide is available in [setup.md](setup.md).
 
-```bash
-aptos --version
-node --version
-npm --version
-```
+## Quick Start
 
-## Local Development
+### Simulation mode
 
-Install frontend dependencies and start Vite:
+No wallet or contract deployment is required.
 
 ```bash
 cd frontend
@@ -66,166 +32,104 @@ npm install
 npm run dev
 ```
 
-The development server is configured to run at `http://localhost:3000`.
+Open `http://localhost:3000`, select **Simulation**, and start a game.
 
-Create the local frontend environment configuration from the committed template:
+### Live on-chain mode
+
+1. Configure an Aptos CLI profile.
+2. Deploy and initialize the contract.
+3. Add the deployed module address to `frontend/.env.local`.
+4. Start the frontend and connect a wallet.
 
 ```bash
-cd frontend
-cp .env.example .env.local
+cp frontend/.env.example frontend/.env.local
+cd contracts
+aptos init --profile wordle-devnet --network devnet
+./deploy.sh --new-profile wordle-devnet --initialize --network devnet
+cd ../frontend
+npm install
+npm run dev
 ```
 
-Set the contract address and network after deployment:
+The deployment script writes the contract address and network to `frontend/.env.local`.
 
-```dotenv
-VITE_CONTRACT_ADDRESS=0xYOUR_DEPLOYED_CONTRACT_ADDRESS
-VITE_APTOS_NETWORK=devnet
+See [setup.md](setup.md) for prerequisites, platform-specific installation, Burner and Petra configuration, troubleshooting, and deployment options.
+
+## Project Structure
+
+```text
+.
+├── contracts/
+│   ├── sources/wordle.move       Move contract
+│   ├── tests/wordle_tests.move   Contract unit tests
+│   ├── deploy.sh                 Contract deployment script
+│   └── set_word.sh               Answer configuration helper
+├── frontend/
+│   ├── src/
+│   │   ├── components/           Game UI components
+│   │   └── utils/                Aptos and wallet utilities
+│   ├── .env.example              Frontend environment template
+│   └── package.json
+├── documentation/wordle/         Wordle technical documentation
+├── README.md
+└── setup.md                      Full setup and deployment guide
 ```
 
-`frontend/.env.local` is local configuration and must not be committed.
+## Contract
 
-## Move Contract Development
+The Move package is in `contracts/` and uses the named address `wordle_addr`. It defines:
 
-Compile the contract:
+- Randomized answer selection
+- Guess validation and duplicate-aware feedback
+- Player game state stored at each player address
+- Win/loss settlement and player statistics
+- Read-only views for frontend state
+
+Compile and test locally:
 
 ```bash
 cd contracts
-aptos move compile --named-addresses wordle_addr=0xcafe
+aptos move compile --dev
+aptos move test --dev
 ```
 
-Run Move tests:
+## Frontend Modes
 
-```bash
-cd contracts
-aptos move test
-```
+| Mode | Behavior |
+|---|---|
+| Petra | Connects an Aptos wallet and submits signed transactions to the contract. |
+| Burner | Uses a locally generated browser wallet and signs transactions without Petra prompts. |
+| Simulation | Runs locally in the browser and does not require a wallet or contract transaction. |
 
-## Deployment with deploy.sh
+Simulation statistics are stored in browser local storage. On-chain modes use resources stored at the connected Aptos account.
 
-Run the deployment script from the `contracts` directory:
-
-```bash
-cd contracts
-./deploy.sh
-```
-
-The script performs the following operations:
-
-1. Uses the Aptos CLI profile named `default`, unless `APTOS_PROFILE` is set or another profile option is provided.
-2. Creates the selected profile automatically if it does not exist.
-3. Reads the account address belonging to the profile.
-4. Publishes the Move package using that account as the `wordle_addr` named address.
-5. Optionally initializes `WordleConfig`.
-6. Writes the deployed address and network to `frontend/.env.local`.
-7. Optionally removes a previous local CLI profile after deployment succeeds.
-8. Instructs the developer to restart the frontend development server.
-
-### First deployment and initialization
-
-Initialize the deployed contract the first time it is published:
-
-```bash
-cd contracts
-./deploy.sh --initialize
-```
-
-Initialization creates the contract configuration and answer pool. It should only be run once for a newly deployed address and package.
-
-### Use an existing named profile
-
-```bash
-cd contracts
-APTOS_PROFILE=wordle-devnet ./deploy.sh --initialize
-```
-
-Or pass the profile as a new-profile deployment:
-
-```bash
-cd contracts
-./deploy.sh --new-profile wordle-devnet-v2 --initialize
-```
-
-### Deploy to a fresh account address
-
-Deploying to a fresh profile creates a new account address and module address:
-
-```bash
-cd contracts
-./deploy.sh --new-profile wordle-devnet-v2 --initialize
-```
-
-A fresh address is required when an existing deployed module is not backward-compatible with the new resource layout, entry-function signature, or public API.
-
-### Remove an old local profile
-
-After successfully publishing with a new profile, the previous profile can be removed locally:
-
-```bash
-cd contracts
-./deploy.sh \
-  --new-profile wordle-devnet-v2 \
-  --initialize \
-  --remove-profile default
-```
-
-This deletes the old profile and private key from the local Aptos CLI configuration. It does not delete the old account or module from the Aptos network. Ensure the old profile is no longer needed before removing it.
-
-### Select a network
-
-The default deployment network is `devnet`:
+## Deployment
 
 ```bash
 cd contracts
 ./deploy.sh --initialize --network devnet
-./deploy.sh --initialize --network testnet
-./deploy.sh --initialize --network mainnet
 ```
 
-The script writes the selected network to `VITE_APTOS_NETWORK` in `frontend/.env.local`.
-
-### Deployment options
-
-| Option | Description |
-|---|---|
-| `--initialize` | Calls `wordle::initialize` after publishing |
-| `--new-profile NAME` | Creates or uses a named Aptos CLI profile and deploys to its address |
-| `--remove-profile NAME` | Removes the named local profile after successful deployment |
-| `--network devnet\|testnet\|mainnet` | Selects the Aptos network |
-| `-h`, `--help` | Displays deployment usage |
-
-Environment variables can also select defaults:
+Common deployment options:
 
 ```bash
-APTOS_PROFILE=wordle-devnet ./deploy.sh --initialize --network devnet
+./deploy.sh --new-profile wordle-devnet --initialize --network devnet
+./deploy.sh --network testnet --initialize
+./deploy.sh --help
 ```
 
-## Upgrade Compatibility
-
-Aptos Move modules cannot be upgraded in place if the update changes resource layouts, changes public entry-function parameters, or removes public functions that existing modules depend on. Such upgrades may fail with `BACKWARD_INCOMPATIBLE_MODULE_UPDATE`.
-
-Use a fresh profile and account when making incompatible contract changes:
-
-```bash
-cd contracts
-./deploy.sh --new-profile wordle-v2 --initialize
-```
-
-After deployment, the script updates the frontend environment file with the new module address.
+The script publishes the package, optionally initializes `WordleConfig`, and updates `frontend/.env.local`.
 
 ## Production Build
-
-Create a production frontend build:
 
 ```bash
 cd frontend
 npm run build
+npm run preview
 ```
 
-Generated files are placed in `frontend/dist/`.
+The production files are generated in `frontend/dist/`.
 
-## Security Notes
+## Documentation
 
-- Never commit `frontend/.env.local` or private keys.
-- Profile configuration under `.aptos/` is ignored by Git.
-- Frontend word validation improves user experience but should not replace contract validation.
-- Random answer selection and game settlement must remain verifiable in the Move contract.
+Additional Wordle technical documentation is available in [documentation/wordle/](documentation/wordle/) and the rendered PDF is at [documentation/wordle/wordle.pdf](documentation/wordle/wordle.pdf).
