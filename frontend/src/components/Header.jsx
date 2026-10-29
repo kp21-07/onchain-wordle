@@ -50,12 +50,12 @@ export function Header({
         </div>
 
         <div className="text-center">
-          <h1 className="text-2xl font-black tracking-widest uppercase flex items-center justify-center gap-1.5">
-            <span>WORDLE</span>
+          <div className="flex items-center justify-center gap-1.5">
+            <span className="text-lg font-black tracking-widest uppercase">WORDLE</span>
             <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-700/80 text-emerald-100 tracking-normal border border-emerald-500/30">
               APTOS
             </span>
-          </h1>
+          </div>
           <p className="text-[11px] text-neutral-400 font-mono">
             {isDevSimulation ? "Local Simulation Mode" : "100% On-Chain Verification"}
           </p>

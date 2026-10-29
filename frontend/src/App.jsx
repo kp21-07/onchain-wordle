@@ -17,10 +17,9 @@ import { VALID_WORDS } from "./utils/validWords";
 
 const EMPTY_DISTRIBUTION = [0, 0, 0, 0, 0, 0];
 const SIMULATION_STATS_KEY = "wordle:simulation-stats";
-
-const loadSimulationStats = () => {
+const loadSimulationStats = (storageKey = SIMULATION_STATS_KEY) => {
   try {
-    const saved = JSON.parse(localStorage.getItem(SIMULATION_STATS_KEY));
+    const saved = JSON.parse(localStorage.getItem(storageKey));
     if (!saved || !Array.isArray(saved.distribution)) return null;
     return {
       played: Number(saved.played) || 0,
@@ -245,7 +244,8 @@ export default function App() {
   useEffect(() => {
     setCorrectWord("");
     if (gameMode === "sim") {
-      setStatistics(loadSimulationStats() || {
+      const storageKey = SIMULATION_STATS_KEY;
+      setStatistics(loadSimulationStats(storageKey) || {
         played: 0,
         won: 0,
         currentStreak: 0,
@@ -290,7 +290,8 @@ export default function App() {
         bestStreak: Math.max(previous.bestStreak, currentStreak),
         distribution,
       };
-      localStorage.setItem(SIMULATION_STATS_KEY, JSON.stringify(next));
+      const storageKey = SIMULATION_STATS_KEY;
+      localStorage.setItem(storageKey, JSON.stringify(next));
       return next;
     });
   };
@@ -408,12 +409,16 @@ export default function App() {
 
     try {
       if (gameMode === "sim") {
-        const result = evaluateSimulation(guessWord, simulatedSolution);
+        let result;
+        let solved;
+
+        result = evaluateSimulation(guessWord, simulatedSolution);
+        solved = result.every((value) => value === 2);
+
         const newGuesses = [...guesses, { word: guessWord, result }];
         setGuesses(newGuesses);
         setCurrentGuess("");
 
-        const solved = result.every((r) => r === 2);
         if (solved) {
           setIsSolved(true);
           setIsGameOver(true);
@@ -421,9 +426,10 @@ export default function App() {
           showBanner("Splendid! You solved the Wordle!", "success", 5000);
         } else if (newGuesses.length >= 6) {
           setIsGameOver(true);
-          setCorrectWord(simulatedSolution);
+          const answer = simulatedSolution;
+          setCorrectWord(answer);
           recordSimulationResult(false, newGuesses.length);
-          showBanner(`Game Over! Secret word was: ${simulatedSolution}`, "error", 6000);
+          showBanner(`Game Over! The words were: ${answer}`, "error", 6000);
         }
       } else {
         const guessBytes = stringToBytes(guessWord);
@@ -568,8 +574,9 @@ export default function App() {
               <Sparkles size={24} />
             </div>
             <h3 className="text-lg font-bold text-white mb-1">
-              {gameMode === "sim" ? "Start Simulation Game" :
-               gameMode === "burner" ? "Start Burner Game" : "Start Live Game"}
+              {gameMode === "sim"
+                ? "Start Simulation Game"
+                : gameMode === "burner" ? "Start Burner Game" : "Start Live Game"}
             </h3>
             <p className="text-xs text-neutral-400 mb-5 leading-relaxed">
               {gameMode === "sim"
@@ -591,7 +598,7 @@ export default function App() {
         ) : (
           // Renders Wordle grid and keyboard directly when the session is active...
           <>
-            <WordleBoard guesses={guesses} currentGuess={currentGuess} />
+            <WordleBoard guesses={guesses} currentGuess={currentGuess} wordLength={5} />
             {isGameOver && !isSolved && correctWord && (
               <div className="text-center text-sm text-neutral-300 my-1">
                 The word was <span className="font-bold text-white tracking-widest">{correctWord}</span>

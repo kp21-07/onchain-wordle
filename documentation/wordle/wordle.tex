@@ -1,0 +1,190 @@
+\documentclass[10pt]{article}
+\usepackage[a4paper,margin=0.7in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\setlist{nosep,leftmargin=1.2em}
+\lstset{basicstyle=\ttfamily\footnotesize,backgroundcolor=\color{gray!8},frame=single,breaklines=true}
+\hypersetup{colorlinks=true,urlcolor=blue,linkcolor=blue,pdftitle={Aptos On-Chain Wordle}}
+
+\title{Aptos On-Chain Wordle\\[2mm]\large Technical Summary}
+\author{Wordle Web3 Project}
+\date{October 2026}
+
+\begin{document}
+\maketitle
+
+\section{System Overview}
+
+The project implements Wordle with an Aptos Move contract and a React frontend. Players receive six attempts to guess a five-letter word. Petra mode signs live transactions with an Aptos wallet, burner mode uses a browser-managed development account, and simulation mode runs entirely locally.
+
+The contract is authoritative in live modes. It stores the current answer, attempt history, game outcome, and cumulative statistics. The frontend provides validation, transaction construction, board rendering, and wallet management. Frontend validation improves the user experience; it does not replace contract security.
+
+The principal files are:\\
+\texttt{contracts/sources/wordle.move}, the game contract; \texttt{frontend/src/App.jsx}, the game lifecycle; \texttt{frontend/src/utils/validWords.js}, the frontend dictionary; and \texttt{contracts/deploy.sh}, deployment automation.
+
+\section{Move Contract}
+
+The module uses the named address \texttt{wordle\_addr}. Its configuration is stored under the module address:
+\begin{lstlisting}[language=C]
+struct WordleConfig has key {
+    admin: address,
+    word_list: vector<vector<u8>>,
+    is_active: bool,
+}
+\end{lstlisting}
+
+\texttt{initialize} creates this resource once and installs a five-letter answer pool. A second initialization is rejected by the existing-resource check. The global answer pool allows multiple players to receive different randomized targets.
+
+Each player has an account-owned \texttt{PlayerState}:
+\begin{lstlisting}[language=C]
+struct PlayerState has key {
+    attempts: vector<GuessResult>, is_solved: bool,
+    max_attempts: u64, target_word: vector<u8>,
+    games_played: u64, games_won: u64,
+    current_streak: u64, best_streak: u64,
+    guess_distribution: vector<u64>, game_finished: bool,
+}
+\end{lstlisting}
+
+A GuessResult contains the submitted byte vector and its feedback vector. Feedback uses \texttt{0} for absent, \texttt{1} for misplaced, and \texttt{2} for exact.
+
+\section{Game Lifecycle}
+
+\textbf{Start.} \texttt{start\_game} gets the configuration, selects an answer index with Aptos randomness, and creates or resets the player's state. Resetting clears attempts and current-game flags but preserves cumulative statistics.
+
+If $W$ is the answer pool and $R$ is the bounded random index:
+\[
+\texttt{target\_word}=W[R], \qquad 0\leq R < |W|.
+\]
+
+\textbf{Submit.} \texttt{submit\_guess} verifies that the player has a game, the guess contains exactly five bytes, the game is active, and fewer than six attempts have been used. It evaluates the guess, appends the result, and checks the outcome.
+
+A game wins when all five feedback values are exact:
+\[
+\forall i\in\{0,1,2,3,4\}:\ R_i=2.
+\]
+A win increments games played, games won, and the streak. It also increments the distribution index corresponding to the winning attempt:
+\[
+d_{n-1}\leftarrow d_{n-1}+1,
+\]
+where $n$ is the attempt number. The best streak is updated as
+\[
+\texttt{best\_streak}=\max(\texttt{current\_streak},\texttt{best\_streak}).
+\]
+
+A loss on the sixth unsuccessful guess increments games played and resets the current streak. The final loss does not add to the guess distribution. Game settlement uses \texttt{game\_finished}, preventing one completed game from updating statistics twice. Starting another game resets only the current game.
+
+\section{Letter Evaluation}
+
+Feedback is calculated in two passes to handle duplicate letters correctly.
+
+\textbf{Pass one: exact matches.} Every position $i$ where $G_i=T_i$ becomes exact, and its target position is consumed. This prevents a duplicate letter elsewhere from claiming that position.
+
+\textbf{Pass two: misplaced matches.} Each remaining guess letter searches the unconsumed target letters. A match becomes misplaced and is consumed once. Remaining letters are reported absent.
+
+For example, if \texttt{APPLE} is the target and \texttt{POPPA} is the guess, the result is \([1,0,2,0,1]\). The exact middle \texttt{P} is assigned first; duplicate occurrences then receive feedback only if target occurrences remain.
+
+\section{Contract Views}
+
+The frontend reads contract state through Move views:
+
+\begin{center}
+\begin{tabular}{@{}p{0.39\textwidth}p{0.55\textwidth}@{}}
+\toprule
+Function & Purpose\\
+\midrule
+\texttt{has\_game(address)} & Tests whether player state exists\\
+\texttt{get\_player\_status(address)} & Returns solved state, attempt count, and limit\\
+\texttt{get\_attempt\_at(address,index)} & Returns a submitted word and feedback\\
+\texttt{get\_target\_word(address)} & Returns the answer for reveal\\
+\texttt{get\_player\_stats(address)} & Returns statistics and guess distribution\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+After each transaction is committed, the frontend waits for Aptos finality and reloads these views. Game mode and wallet-address guards prevent stale asynchronous responses from changing the wrong session.
+
+Byte vectors are converted to strings for the board and feedback vectors are decoded into values from zero to two. The frontend derives whether the live game is active, solved, or exhausted from the loaded attempts and contract status.
+
+\section{Frontend Options and Modes}
+
+The header provides an operating-mode selector for Petra, burner, and simulation modes. Help, statistics, wallet, reset, and start-game controls are available separately.
+
+Before submission, the frontend converts the guess to uppercase and verifies that it has exactly five characters, belongs to \texttt{VALID\_WORDS}, has not already been submitted, and belongs to an active game.
+
+\subsection{Petra Mode}
+
+Petra mode is the standard option for live gameplay. Selecting it presents the wallet connection controls. The app looks for Petra in the wallet-adapter list and otherwise falls back to a general browser Aptos provider. Connecting a wallet does not start a game automatically.
+
+The user must approve the start-game transaction and each guess in the Petra extension. The contract records both operations under the connected wallet address. Statistics are loaded for that address when it reconnects. Disconnecting the wallet stops live transactions until another account is connected.
+
+\subsection{Burner Mode}
+
+A burner is a browser-managed Aptos development account. It is designed for convenient testing rather than long-term key custody.
+
+On the first initialization, \texttt{getOrCreateBurnerWallet()} generates an Aptos account and Ed25519 private key, then stores the key in browser local storage under \texttt{wordle\_burner\_key}. On later page loads, the app reconstructs the same account from that key. The application also attempts to fund the account through the Aptos devnet faucet.
+
+When the user starts a game or submits a guess, the frontend builds an Aptos transaction, signs it locally with the reconstructed burner account, and sends it through the SDK. No Petra popup appears. After confirmation, the frontend reloads the board and statistics from contract views.
+
+The local private key is persistent but recoverability is limited. Clearing browser storage creates a new burner identity, and clearing storage may therefore make the previous on-chain account and its local key inaccessible. A burner private key should not be used for real assets, shared, or treated as a secure wallet backup.
+
+Both Petra and burner mode call the same contract entry functions:
+\begin{lstlisting}[language=bash]
+<contract-address>::wordle::start_game
+<contract-address>::wordle::submit_guess
+\end{lstlisting}
+Faucet funding supplies gas on supported networks. If faucet funding is unavailable or exhausted, the burner may have insufficient APT and live transactions will fail until it is funded through another faucet or funded account.
+
+\subsection{Simulation Mode}
+
+Simulation mode is independent of Aptos and requires no wallet or gas. Its answer is fixed to \texttt{SMART}, and feedback uses the contract's two-pass letter algorithm. Simulation statistics are stored under \texttt{wordle:simulation-stats} in browser local storage. They remain separate from Petra and burner statistics and are lost only when browser storage for this site is cleared.
+
+Mode changes reset current board state but do not merge or overwrite statistics belonging to another account or mode. Petra and burner records remain on-chain; simulation records remain local.
+
+\subsection{Board and Keyboard}
+
+The board has six rows of five tiles. Gray means absent, yellow means misplaced, and green means exact. The keyboard retains the strongest feedback seen for every letter, with gray $<$ yellow $<$ green. After failure, the frontend requests and displays the target word.
+
+\section{Statistics}
+
+For $G$ games played and $W$ games won, the win percentage is
+\[
+P=\begin{cases}
+100\frac{W}{G},&G>0,\\
+0,&G=0.
+\end{cases}
+\]
+The six-entry distribution counts wins on attempts one through six. Statistics are stored separately for each Aptos account; browser mode changes do not overwrite another account's on-chain statistics.
+
+\section{Deployment and Validation}
+
+The Move package is compiled and tested with:
+\begin{lstlisting}[language=bash]
+cd contracts
+aptos move compile
+aptos move test
+\end{lstlisting}
+
+Publish and initialize using:
+\begin{lstlisting}[language=bash]
+./deploy.sh --initialize
+APTOS_PROFILE=wordle-devnet ./deploy.sh --initialize
+./deploy.sh --new-profile wordle-devnet-v2 --initialize
+\end{lstlisting}
+
+The script publishes under the selected account, initializes Wordle, writes the module address and network to \texttt{frontend/.env.local}, and may remove an old local profile. Removing a profile deletes local credentials; it does not delete the on-chain account or module.
+
+Move resources or function signatures cannot be changed incompatibly in an upgraded module. Such changes require a fresh account and deployment, after which the frontend environment must point to the new address. Deterministic Move tests should cover feedback and duplicate letters; randomness should not be tested by assuming a particular random index.
+
+\end{document}

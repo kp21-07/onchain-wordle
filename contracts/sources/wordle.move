@@ -96,13 +96,7 @@ module wordle_addr::wordle {
         }
 		// If PlayerState does not exist, move a new PlayerState to player.
         else {
-            let guess_distribution = vector::empty<u64>();
-            guess_distribution.push_back(0);
-            guess_distribution.push_back(0);
-            guess_distribution.push_back(0);
-            guess_distribution.push_back(0);
-            guess_distribution.push_back(0);
-            guess_distribution.push_back(0);
+            let guess_distribution = vector[0,0,0,0,0,0];
             move_to(player, PlayerState {
                 attempts: vector::empty<GuessResult>(),
                 is_solved: false,

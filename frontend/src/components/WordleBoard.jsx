@@ -1,6 +1,6 @@
 import React from "react";
 
-export function WordleBoard({ guesses, currentGuess }) {
+export function WordleBoard({ guesses, currentGuess, wordLength = 5 }) {
   const rows = [];
 
   for (let i = 0; i < 6; i++) {
@@ -16,18 +16,20 @@ export function WordleBoard({ guesses, currentGuess }) {
     } else if (i === guesses.length) {
       // Current active row
       rows.push({
-        word: currentGuess.padEnd(5, " ").slice(0, 5),
+        word: currentGuess.padEnd(wordLength, " ").slice(0, wordLength),
         results: null,
         isCompleted: false,
         isCurrent: true,
+        isQuantum: false,
       });
     } else {
       // Empty upcoming row
       rows.push({
-        word: "     ",
+        word: " ".repeat(wordLength),
         results: null,
         isCompleted: false,
         isCurrent: false,
+        isQuantum: false,
       });
     }
   }
@@ -37,9 +39,10 @@ export function WordleBoard({ guesses, currentGuess }) {
       {rows.map((row, rowIndex) => (
         <div
           key={rowIndex}
-          className="grid grid-cols-5 gap-1.5"
+          className="grid gap-1.5"
+          style={{ gridTemplateColumns: `repeat(${wordLength}, minmax(0, 1fr))` }}
         >
-          {Array.from({ length: 5 }).map((_, colIndex) => {
+          {Array.from({ length: wordLength }).map((_, colIndex) => {
             const letter = row.word[colIndex]?.trim() || "";
             
             // Default styles

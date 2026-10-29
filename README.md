@@ -40,7 +40,6 @@ The frontend is a React and Vite application located in `frontend/`. It communic
 - Petra mode uses the player's connected wallet.
 - Burner mode uses a local development wallet.
 - Simulation mode runs entirely in the browser and requires no transaction.
-- QWordle is currently available only as a frontend simulation while its Move contract is developed.
 
 ## Prerequisites
 
