@@ -296,6 +296,8 @@ export default function App() {
     });
   };
 
+  const isValidGuess = (guess) => guess.length === 5 && VALID_WORDS.has(guess);
+
   const evaluateSimulation = (guess, solution) => {
     const result = [0, 0, 0, 0, 0];
     const solRemaining = {};
@@ -390,7 +392,7 @@ export default function App() {
     }
 
     const guessWord = currentGuess.toUpperCase();
-    if (!VALID_WORDS.has(guessWord)) {
+    if (!isValidGuess(guessWord)) {
       showBanner("Not in the valid word list", "error");
       return;
     }
