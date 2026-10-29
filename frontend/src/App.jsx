@@ -11,7 +11,7 @@ import {
   stringToBytes,
   bytesToString,
 } from "./utils/aptosConfig";
-import { AlertCircle, CheckCircle, Play, Sparkles } from "lucide-react";
+import { AlertCircle, CheckCircle, Play } from "lucide-react";
 import { getOrCreateBurnerWallet } from "./utils/burnerWallet";
 import { VALID_WORDS } from "./utils/validWords";
 
@@ -105,16 +105,16 @@ export default function App() {
       const petra = wallets?.find((w) => w.name.toLowerCase().includes("petra")) || wallets?.[0];
       if (petra) {
         await connect(petra.name);
-        showBanner("Connected to " + petra.name + "!", "success");
+        showBanner("Wallet connected", "success");
       } else if (typeof window !== "undefined" && window.aptos) {
         await window.aptos.connect();
-        showBanner("Connected to Aptos Wallet!", "success");
+        showBanner("Wallet connected", "success");
       } else {
-        showBanner("No Aptos wallet detected. Please install Petra extension!", "error");
+        showBanner("Petra not detected", "error");
       }
     } catch (err) {
       console.error("Wallet connection error:", err);
-      showBanner("Failed to connect: " + (err.message || err), "error");
+      showBanner("Connection failed", "error");
     }
   };
 
@@ -338,9 +338,9 @@ export default function App() {
         setIsSolved(false);
         setIsGameOver(false);
         setCorrectWord("");
-        showBanner("New simulation game started!", "success");
+        showBanner("Game started", "success");
       } else if (gameMode === "burner") {
-        showBanner("Starting game via Burner... No popup needed!", "info");
+        showBanner("Starting game…", "info");
         const transaction = await aptosClient.transaction.build.simple({
           sender: burnerAccount.accountAddress,
           data: {
@@ -353,10 +353,10 @@ export default function App() {
           transaction,
         });
         await aptosClient.waitForTransaction({ transactionHash: committedTxn.hash });
-        showBanner("Game session created via Burner Wallet!", "success");
+        showBanner("Game started", "success");
         await fetchOnChainState(activeAddress);
       } else {
-        showBanner("Starting game on-chain... Please approve in Petra", "info");
+        showBanner("Approve in Petra", "info");
         const response = await signAndSubmitTransaction({
           data: {
             function: `${contractAddress}::${MODULE_NAME}::start_game`,
@@ -364,12 +364,12 @@ export default function App() {
           },
         });
         await aptosClient.waitForTransaction({ transactionHash: response.hash });
-        showBanner("Game session created on Aptos! Ready to guess.", "success");
+        showBanner("Game started", "success");
         await fetchOnChainState(activeAddress);
       }
     } catch (err) {
       console.error(err);
-      showBanner("Failed to start game: " + (err.message || err), "error");
+      showBanner("Could not start game", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -377,12 +377,12 @@ export default function App() {
 
   const handleSubmitGuess = async () => {
     if (gameMode === "petra" && !isWalletConnected) {
-      showBanner("Please connect your wallet first", "error");
+      showBanner("Connect your wallet", "error");
       return;
     }
 
     if (!hasActiveGame) {
-      showBanner("Click 'Start Game' first to create your session!", "error");
+      showBanner("Start a game first", "error");
       return;
     }
 
@@ -403,7 +403,7 @@ export default function App() {
     }
 
     if (isGameOver || isSolved) {
-      showBanner("Game finished! Click reset to play again.", "info");
+      showBanner("Game finished", "info");
       return;
     }
 
@@ -425,13 +425,13 @@ export default function App() {
           setIsSolved(true);
           setIsGameOver(true);
           recordSimulationResult(true, newGuesses.length);
-          showBanner("Splendid! You solved the Wordle!", "success", 5000);
+          showBanner("Solved", "success", 5000);
         } else if (newGuesses.length >= 6) {
           setIsGameOver(true);
           const answer = simulatedSolution;
           setCorrectWord(answer);
           recordSimulationResult(false, newGuesses.length);
-          showBanner(`Game Over! The words were: ${answer}`, "error", 6000);
+          showBanner("Game over", "error", 6000);
         }
       } else {
         const guessBytes = stringToBytes(guessWord);
@@ -450,7 +450,7 @@ export default function App() {
           });
           await aptosClient.waitForTransaction({ transactionHash: committedTxn.hash });
         } else {
-          showBanner("Submitting guess to Aptos... Approve in Petra", "info");
+          showBanner("Approve in Petra", "info");
           const response = await signAndSubmitTransaction({
             data: {
               function: `${contractAddress}::${MODULE_NAME}::submit_guess`,
@@ -465,7 +465,7 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
-      showBanner("Transaction failed: " + (err.message || err), "error");
+      showBanner("Transaction failed", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -490,10 +490,10 @@ export default function App() {
         bestStreak: 0,
         distribution: [...EMPTY_DISTRIBUTION],
       });
-      showBanner("Switched to Simulation Mode", "info");
+      showBanner("Simulation", "info");
     }
-    else if (nextMode === "burner") showBanner("Switched to Burner Wallet Mode (Auto-Signing)", "info");
-    else showBanner("Switched to Petra Wallet Mode (Manual Approvals)", "info");
+    else if (nextMode === "burner") showBanner("Burner", "info");
+    else showBanner("Petra", "info");
   };
 
   const handleKeyPress = useCallback(
@@ -548,7 +548,6 @@ export default function App() {
 
         gameMode={gameMode}
         onGameModeChange={handleGameModeChange}
-        isDevSimulation={gameMode === "sim"}
       />
 
       <main className="flex-1 flex flex-col justify-between max-w-xl w-full mx-auto px-4 py-2">
@@ -572,22 +571,6 @@ export default function App() {
 
         {showStartCard ? (
           <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 text-center max-w-sm mx-auto my-6 shadow-2xl">
-            <div className="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Sparkles size={24} />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-1">
-              {gameMode === "sim"
-                ? "Start Simulation Game"
-                : gameMode === "burner" ? "Start Burner Game" : "Start Live Game"}
-            </h3>
-            <p className="text-xs text-neutral-400 mb-5 leading-relaxed">
-              {gameMode === "sim"
-                ? "Play locally in your browser — no wallet or gas needed."
-                : gameMode === "burner"
-                ? "Play on-chain using an auto-funded browser wallet. Zero Petra popups."
-                : <>Your wallet needs an initialized <code className="text-emerald-400 font-mono">PlayerState</code> resource on the Aptos blockchain.</>
-              }
-            </p>
             <button
               onClick={handleStartGame}
               disabled={isSubmitting}
@@ -637,8 +620,8 @@ export default function App() {
               {[
                 [statistics.played, "Played"],
                 [statistics.played ? Math.round((statistics.won / statistics.played) * 100) : 0, "Win %"],
-                [statistics.currentStreak, "Current"],
-                [statistics.bestStreak, "Best"],
+                [statistics.currentStreak, "Current streak"],
+                [statistics.bestStreak, "Best streak"],
               ].map(([value, label]) => (
                 <div key={label}>
                   <div className="text-2xl font-bold">{value}</div>

@@ -1,5 +1,5 @@
 import React from "react";
-import { X, CheckCircle2, ShieldCheck, Zap } from "lucide-react";
+import { X } from "lucide-react";
 
 export function HowToPlayModal({ isOpen, onClose }) {
   if (!isOpen) return null;
@@ -15,15 +15,12 @@ export function HowToPlayModal({ isOpen, onClose }) {
         </button>
 
         <h2 className="text-xl font-bold tracking-wide uppercase mb-4 text-center">
-          How to Play On-Chain Wordle
+          How to Play
         </h2>
 
         <div className="space-y-4 text-sm text-neutral-300">
           <p>Guess the Wordle in 6 tries.</p>
-          <p>
-            Each guess must be a valid 5-letter word. Every guess is verified
-            cryptographically by an <strong>Aptos Move smart contract</strong>!
-          </p>
+          <p>Each guess must be a valid 5-letter word.</p>
 
           <div className="border-t border-b border-[#3a3a3c] py-3 space-y-2">
             <p className="font-semibold text-white">Examples:</p>
@@ -33,7 +30,7 @@ export function HowToPlayModal({ isOpen, onClose }) {
                 W
               </div>
               <span>
-                <strong>W</strong> is in the word and in the correct spot (Green = 2).
+                <strong>W</strong> is in the word and in the correct spot.
               </span>
             </div>
 
@@ -42,7 +39,7 @@ export function HowToPlayModal({ isOpen, onClose }) {
                 I
               </div>
               <span>
-                <strong>I</strong> is in the word but in the wrong spot (Yellow = 1).
+                <strong>I</strong> is in the word but in the wrong spot.
               </span>
             </div>
 
@@ -51,18 +48,9 @@ export function HowToPlayModal({ isOpen, onClose }) {
                 U
               </div>
               <span>
-                <strong>U</strong> is not in the word in any spot (Gray = 0).
+                <strong>U</strong> is not in the word.
               </span>
             </div>
-          </div>
-
-          <div className="bg-neutral-900/60 p-3 rounded-lg border border-neutral-800 space-y-2">
-            <div className="flex items-center gap-2 text-emerald-400 text-xs font-semibold uppercase tracking-wider">
-              <ShieldCheck size={16} /> Web3 Architecture (Track 3)
-            </div>
-            <p className="text-xs text-neutral-400 leading-relaxed">
-              The smart contract stores player game sessions and executes the two-pass Wordle matching algorithm on-chain to ensure zero client-side cheating.
-            </p>
           </div>
         </div>
 
@@ -70,7 +58,7 @@ export function HowToPlayModal({ isOpen, onClose }) {
           onClick={onClose}
           className="mt-6 w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-lg"
         >
-          Got it!
+Close
         </button>
       </div>
     </div>

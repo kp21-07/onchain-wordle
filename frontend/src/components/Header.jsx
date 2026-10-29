@@ -12,7 +12,6 @@ export function Header({
   isSubmitting,
   gameMode,
   onGameModeChange,
-  isDevSimulation,
 }) {
   return (
     <header className="border-b border-[#3a3a3c] bg-[#121213]/90 backdrop-blur sticky top-0 z-30 px-4 py-3">
@@ -21,7 +20,7 @@ export function Header({
           <button
             onClick={onOpenHowToPlay}
             className="p-2 rounded-full hover:bg-neutral-800 text-neutral-400 hover:text-white"
-            title="How to play & On-Chain rules"
+            title="How to play"
           >
             <HelpCircle size={22} />
           </button>
@@ -35,11 +34,7 @@ export function Header({
           <select
             value={gameMode}
             onChange={(event) => onGameModeChange(event.target.value)}
-            className={`max-w-28 rounded-lg border px-2 py-1.5 text-[11px] font-semibold outline-none cursor-pointer ${
-              isDevSimulation
-                ? "border-amber-500/30 bg-amber-500/15 text-amber-300"
-                : "border-emerald-500/30 bg-emerald-500/15 text-emerald-300"
-            }`}
+            className="max-w-28 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-[11px] font-semibold text-neutral-200 outline-none cursor-pointer"
             title="Select game mode"
             aria-label="Game mode"
           >
@@ -50,15 +45,7 @@ export function Header({
         </div>
 
         <div className="text-center">
-          <div className="flex items-center justify-center gap-1.5">
-            <span className="text-lg font-black tracking-widest uppercase">WORDLE</span>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-700/80 text-emerald-100 tracking-normal border border-emerald-500/30">
-              APTOS
-            </span>
-          </div>
-          <p className="text-[11px] text-neutral-400 font-mono">
-            {isDevSimulation ? "Local Simulation Mode" : "100% On-Chain Verification"}
-          </p>
+          <span className="text-lg font-black tracking-widest uppercase">WORDLE</span>
         </div>
 
         <div className="flex items-center space-x-2">
